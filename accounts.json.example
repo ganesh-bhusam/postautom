@@ -1,0 +1,23 @@
+[
+  {
+    "id": "account_1",
+    "name": "X Account 1",
+    "profileDir": "./profiles/account_1",
+    "targetUrl": "https://x.com/home",
+    "proxy": null
+  },
+  {
+    "id": "account_2",
+    "name": "X Account 2",
+    "profileDir": "./profiles/account_2",
+    "targetUrl": "https://x.com/home",
+    "proxy": null
+  },
+  {
+    "id": "account_3",
+    "name": "X Account 3",
+    "profileDir": "./profiles/account_3",
+    "targetUrl": "https://x.com/home",
+    "proxy": null
+  }
+]

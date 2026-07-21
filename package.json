@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "quantum": "node quantum_start.js",
+    "multi": "node multi_account_start.js",
     "dry-run": "NODE_ENV=dry-run node index.js"
   },
   "keywords": [
