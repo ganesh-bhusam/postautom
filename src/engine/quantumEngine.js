@@ -1,20 +1,19 @@
-import { LLMSwapper } from '../ai/llmSwapper.js';
+import { Interactor } from '../actions/interactor.js';
+import { ReplyGenerator } from '../ai/replyGenerator.js';
 import { logger } from '../utils/logger.js';
 import { MemoryManager } from '../utils/memory.js';
 
 /**
- * Quantum Architecture: 50-Parallel Async Worker Engine
- * Multi-threaded concurrency orchestrator operating with zero GUI browser bloat
+ * Apex Quantum Architecture: High-Performance Parallel Worker Engine
+ * Executes actual auto-likes and auto-replies across parallel worker tabs in Playwright.
  */
 export class QuantumEngine {
-  constructor(concurrency = 50) {
-    this.concurrency = concurrency;
-    this.swapper = new LLMSwapper();
-    this.history = new Set();
+  constructor(concurrency = 5) {
+    this.concurrency = concurrency; // Number of parallel worker tabs (e.g. 5 concurrent browser tabs)
   }
 
   /**
-   * Run 50 parallel worker queue processing cycle
+   * Run parallel worker queue execution cycle
    * @param {import('playwright').BrowserContext} context
    * @param {Array<object>} posts
    */
@@ -24,61 +23,78 @@ export class QuantumEngine {
       return 0;
     }
 
+    const workerCount = Math.min(this.concurrency, posts.length);
+
     logger.apex(`===================================================================`);
-    logger.apex(`⚡ QUANTUM ENGINE ACTIVATED: Running ${this.concurrency} Parallel Workers ⚡`);
-    logger.apex(`Processing ${posts.length} targets with 0 GUI lag (<40MB RAM Target)...`);
+    logger.apex(`⚡ QUANTUM ENGINE ACTIVATED: Running ${workerCount} Parallel Worker Tabs ⚡`);
+    logger.apex(`Processing ${posts.length} targets with live auto-likes & auto-replies...`);
     logger.apex(`===================================================================`);
 
-    await this.swapper.initialize(context);
+    const replyGen = new ReplyGenerator();
+    await replyGen.initialize(context);
 
     let completedCount = 0;
-    const queue = [...posts];
+    const taskQueue = [...posts];
 
-    // Helper to process task with bounded concurrency
-    const workerPool = [];
-    const activeWorkers = Math.min(this.concurrency, posts.length);
+    // Create pool of parallel worker page instances
+    const workerPromises = [];
 
-    for (let i = 0; i < activeWorkers; i++) {
-      workerPool.push(this.startWorkerThread(i + 1, queue, () => completedCount++));
+    for (let workerId = 1; workerId <= workerCount; workerId++) {
+      workerPromises.push(
+        this.runWorkerTab(workerId, context, taskQueue, replyGen, () => {
+          completedCount++;
+        })
+      );
     }
 
-    await Promise.all(workerPool);
+    await Promise.all(workerPromises);
 
     MemoryManager.logNodeMemoryUsage();
-    logger.success(`Quantum 50-Parallel execution complete! Successfully processed: ${completedCount}/${posts.length}`);
+    logger.success(`Quantum execution complete! Successfully processed and posted: ${completedCount}/${posts.length}`);
     return completedCount;
   }
 
   /**
-   * Thread worker runner pulling tasks from queue concurrently
+   * Thread worker page tab running actual browser actions
    */
-  async startWorkerThread(threadId, queue, onComplete) {
-    logger.info(`[Quantum Worker Thread #${threadId}] Online and ready for parallel tasks.`);
+  async runWorkerTab(workerId, context, taskQueue, replyGen, onComplete) {
+    logger.info(`[Quantum Worker Tab #${workerId}] Initialized browser tab...`);
+    const page = await context.newPage();
 
-    while (queue.length > 0) {
-      const task = queue.shift();
-      if (!task) break;
+    try {
+      while (taskQueue.length > 0) {
+        if (page.isClosed()) break;
 
-      logger.info(`[Quantum Worker #${threadId}] Processing Post ID: ${task.tweetId} (${task.author})`);
+        const tweet = taskQueue.shift();
+        if (!tweet) break;
 
-      try {
-        // 1. Generate Contextual AI Response via LLM Swapper
-        const prompt = `Craft a witty, insightful reply under 240 chars to this tweet by ${task.author}: "${task.tweetText}"`;
-        const aiReply = await this.swapper.generateResponse(prompt);
+        logger.info(`----------------------------------------------------------------`);
+        logger.info(`[Quantum Worker Tab #${workerId}] Processing Tweet ID: ${tweet.tweetId} by ${tweet.author}`);
 
-        logger.success(`[Quantum Worker #${threadId}] AI Response Ready: "${aiReply.slice(0, 50)}..."`);
+        try {
+          // Step 1: Direct Status Page Navigation (Guarantees zero stale DOM element handles)
+          await Interactor.navigateToTweet(page, tweet);
 
-        // 2. Simulate parallel execution delay
-        const delayMs = Math.floor(Math.random() * (4000 - 1000 + 1)) + 1000;
-        await new Promise((r) => setTimeout(r, delayMs));
+          // Step 2: Live Auto-Like Action on X
+          await Interactor.autoLike(page, tweet);
 
-        onComplete();
-        logger.success(`[Quantum Worker #${threadId}] Finished post [${task.tweetId}]`);
-      } catch (err) {
-        logger.error(`[Quantum Worker #${threadId}] Error on post ${task.tweetId}`, err);
+          // Step 3: Generate Contextual AI Response via LLM Swapper
+          const aiReply = await replyGen.generateReply(tweet.tweetText, tweet.author);
+
+          // Step 4: Live Auto-Reply Submission on X
+          await Interactor.autoReply(page, tweet, aiReply);
+
+          onComplete();
+          logger.success(`[Quantum Worker Tab #${workerId}] Finished & posted on target [${tweet.tweetId}]`);
+        } catch (err) {
+          logger.error(`[Quantum Worker Tab #${workerId}] Error on tweet ${tweet.tweetId}`, err);
+        }
+      }
+    } finally {
+      if (!page.isClosed()) {
+        await page.close();
+        logger.info(`[Quantum Worker Tab #${workerId}] Queue empty. Closed worker tab.`);
       }
     }
-
-    logger.info(`[Quantum Worker #${threadId}] Queue drained. Thread standing down.`);
   }
 }
