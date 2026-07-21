@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Sensitive Browser Profiles & Credentials
+user_data_dir/
+user_data/
+*.log
+.env
+.env.local
+
+# History Registry & Scratch Data
+history.json
+scratch/
+
+# System Files
+.DS_Store
+Thumbs.db

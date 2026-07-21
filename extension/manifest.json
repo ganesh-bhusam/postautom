@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Apex Automator - Native X Engine",
+  "version": "1.0.0",
+  "description": "Native Manifest V3 Browser Extension for X (Twitter) Autonomous AI Auto-Reply & Auto-Like",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://gemini.google.com/*",
+    "https://chatgpt.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": ["contentScript.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
